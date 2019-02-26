@@ -1,0 +1,219 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Using Stocator library to connect to IBMCloud COS for sourcing objects as Spark DataFrame\n",
+    "\n",
+    "The following examples are using IAM authentication to access objects"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Using local jar"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pyspark import SparkConf"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pyspark.sql import SparkSession"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "spark = SparkSession.builder.master(\"local\")\\\n",
+    ".config(\"spark.jars\", \"/Users/shengyipan/.m2/repository/com/ibm/stocator/stocator/1.0.30-IBM-SDK/stocator-1.0.30-IBM-SDK.jar\")\\\n",
+    ".config(\"fs.stocator.scheme.list\", \"cos\")\\\n",
+    ".config(\"fs.cos.impl\", \"com.ibm.stocator.fs.ObjectStoreFileSystem\")\\\n",
+    ".config(\"fs.stocator.cos.impl\", \"com.ibm.stocator.fs.cos.COSAPIClient\")\\\n",
+    ".config(\"fs.stocator.cos.scheme\", \"cos\")\\\n",
+    ".config(\"fs.cos.myCos.endpoint\", \"https://s3.ams03.objectstorage.softlayer.net\")\\\n",
+    ".config(\"fs.cos.myCos.iam.api.key\", \"\")\\\n",
+    ".config(\"fs.cos.myCos.iam.service.id\", \"crn:v1:bluemix:public:cloud-object-storage:global:a/xyz::\")\\\n",
+    ".getOrCreate()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df=spark.read.csv(\"cos://my-bucket-span001.myCos/source/year=2018/month=08/day=28/\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+--------------------+\n",
+      "|                 _c0|\n",
+      "+--------------------+\n",
+      "|These examples gi...|\n",
+      "|Spark is built on...|\n",
+      "|      In the RDD API|\n",
+      "+--------------------+\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "df.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Using remote jar\n",
+    "Steps:\n",
+    "\n",
+    "1. Create settings.xml and put it under $HOME/.ivy2/\n",
+    "2. Use following code"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Just create an empty file named \"settings.xml\" then copy and paste following contents into it.\n",
+    "Do remember to change your user \n",
+    "```\n",
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+    "<ivy-settings>\n",
+    "  <settings defaultResolver=\"main\" />\n",
+    "  <!--Authentication required for publishing (deployment). 'Artifactory Realm' is the realm used by Artifactory so don't change it.-->\n",
+    "  <credentials host=\"na.artifactory.swg-devops.com\" realm=\"Artifactory Realm\" username=\"your-user-name\" passwd=\"your-password\" />\n",
+    "  <resolvers>\n",
+    "    <chain name=\"main\">\n",
+    "      <ibiblio name=\"public\" m2compatible=\"true\" root=\"https://na.artifactory.swg-devops.com:443/artifactory/txo-cedp-garage-artifacts-sbt-local\" />\n",
+    "    </chain>\n",
+    "  </resolvers>\n",
+    "</ivy-settings>\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pyspark import SparkConf"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pyspark.sql import SparkSession"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "spark = SparkSession.builder.master(\"local\")\\\n",
+    ".config(\"spark.jars.ivySettings\", \"/Users/shengyipan/.ivy2/settings.xml\")\\\n",
+    ".config(\"spark.jars.packages\", \"com.ibm.stocator:stocator:1.0.30-IBM-SDK\")\\\n",
+    ".config(\"fs.stocator.scheme.list\", \"cos\")\\\n",
+    ".config(\"fs.cos.impl\", \"com.ibm.stocator.fs.ObjectStoreFileSystem\")\\\n",
+    ".config(\"fs.stocator.cos.impl\", \"com.ibm.stocator.fs.cos.COSAPIClient\")\\\n",
+    ".config(\"fs.stocator.cos.scheme\", \"cos\")\\\n",
+    ".config(\"fs.cos.myCos.endpoint\", \"https://s3.ams03.objectstorage.softlayer.net\")\\\n",
+    ".config(\"fs.cos.myCos.iam.api.key\", \"\")\\\n",
+    ".config(\"fs.cos.myCos.iam.service.id\", \"crn:v1:bluemix:public:cloud-object-storage:global:a/xyz::\")\\\n",
+    ".getOrCreate()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df=spark.read.csv(\"cos://my-bucket.myCos/source/year=2018/month=08/day=28/\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+--------------------+\n",
+      "|                 _c0|\n",
+      "+--------------------+\n",
+      "|These examples gi...|\n",
+      "|Spark is built on...|\n",
+      "|      In the RDD API|\n",
+      "+--------------------+\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "df.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
