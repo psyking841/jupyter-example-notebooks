@@ -1,0 +1,190 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import ibm_boto3\n",
+    "from ibm_botocore.client import Config"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#If you are using HMAC authentication\n",
+    "#aws_access_key_id = 'keyid' #Platform API Key: https://console.bluemix.net/iam/#/apikeys\n",
+    "#aws_secret_access_key = 'secretkey'\n",
+    "func_id_api_key = 'funcid'\n",
+    "auth_endpoint = 'https://iam.bluemix.net/oidc/token' # You don't have to change this\n",
+    "# Only service_endpoint identifies the COS service, service instance_id is OPTIONAL.\n",
+    "service_instance_id = 'instanceid'\n",
+    "service_endpoint = 'https://s3.us-south.objectstorage.softlayer.net'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cos_resource = ibm_boto3.resource('s3',\n",
+    "                      #If you are using HMAC authentication            \n",
+    "                      #aws_access_key_id=aws_access_key_id, \n",
+    "                      #aws_secret_access_key=aws_secret_access_key,\n",
+    "                      ibm_api_key_id=func_id_api_key, #api key of the owner\n",
+    "                      ibm_service_instance_id=service_instance_id,#\"crn:v1:bluemix:public:cloud-object-storage:global:a/bbec8f6fff5d44598261ffb8abdc1889:758e3fa9-fa50-4b8a-95e8-31b05d4891b7::\", #resources instance id, OPTIONAL\n",
+    "                      ibm_auth_endpoint=auth_endpoint,\n",
+    "                      config=Config(signature_version='oauth'),\n",
+    "                      endpoint_url=service_endpoint)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def build_path(l):\n",
+    "    # Given ['a', 'b', 'c']\n",
+    "    # Output ['a', 'a/b', 'a/b/c']\n",
+    "    k = []\n",
+    "    for i in l:\n",
+    "        if len(k) == 0:\n",
+    "            k.append(i)\n",
+    "        else:\n",
+    "            t = k[-1] + '/' + i\n",
+    "            k.append(t)\n",
+    "    return k"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['a', 'a/b', 'a/b/c']"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "build_path(['a', 'b', 'c'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "to_be_deleted = []\n",
+    "for o in cos_resource.Bucket('lotame-landing-zone').objects.all():\n",
+    "    if o.key.endswith('_SUCCESS'):\n",
+    "        l = o.key.split('/')\n",
+    "        to_be_deleted += build_path(l)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['dmp-ref-dmp-aud',\n",
+       " 'dmp-ref-dmp-aud/_SUCCESS',\n",
+       " 'dmp_upid_dsp_xref',\n",
+       " 'dmp_upid_dsp_xref/current',\n",
+       " 'dmp_upid_dsp_xref/current/_SUCCESS',\n",
+       " 'tmp',\n",
+       " 'tmp/dmp_ref_dmp_aud',\n",
+       " 'tmp/dmp_ref_dmp_aud/_SUCCESS']"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "to_be_deleted"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='dmp-ref-dmp-aud')\n",
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='dmp-ref-dmp-aud/_SUCCESS')\n",
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='dmp_upid_dsp_xref/current')\n",
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='dmp_upid_dsp_xref/current/_SUCCESS')\n",
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='tmp/dmp_ref_dmp_aud')\n",
+      "s3.ObjectSummary(bucket_name='lotame-landing-zone', key='tmp/dmp_ref_dmp_aud/_SUCCESS')\n"
+     ]
+    }
+   ],
+   "source": [
+    "for o in cos_resource.Bucket('lotame-landing-zone').objects.all():\n",
+    "    if o.key in to_be_deleted:\n",
+    "        print(o)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Uncomment following lines when you are ready to delete\n",
+    "# for o in cos_resource.Bucket('lotame-landing-zone').objects.all():\n",
+    "#     if o.key in to_be_deleted:\n",
+    "#         o.delete()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3.6",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
